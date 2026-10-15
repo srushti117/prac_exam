@@ -1,0 +1,61 @@
+name: Student Result Management System CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flask pytest
+
+      - name: Create application tests
+        run: |
+          cat > test_app.py <<'EOF'
+          from app import app
+
+          def test_home():
+              client = app.test_client()
+              response = client.get("/")
+              assert response.status_code == 200
+
+          def test_health():
+              client = app.test_client()
+              response = client.get("/health")
+              assert response.status_code == 200
+              assert response.json["status"] == "healthy"
+
+          def test_student_result():
+              client = app.test_client()
+              response = client.get("/results/101")
+              assert response.status_code == 200
+              data = response.json
+              assert data["name"] == "Aarav Shah"
+              assert data["total"] == 251
+              assert data["percentage"] == 83.67
+              assert data["status"] == "PASS"
+
+          def test_student_not_found():
+              client = app.test_client()
+              response = client.get("/results/999")
+              assert response.status_code == 404
+          EOF
+
+      - name: Run tests
+        run: pytest -v
