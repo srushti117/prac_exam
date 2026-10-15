@@ -1,92 +1,51 @@
-name: Student Result Management System CI
-
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
-  workflow_dispatch:
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flask pytest
-
-      - name: Create application tests
-        run: |
-          cat > test_app.py <<'EOF'
-          from app import app
-
-          def test_home():
-              client = app.test_client()
-              response = client.get("/")
-              assert response.status_code == 200
-
-          def test_health():
-              client = app.test_client()
-              response = client.get("/health")
-              assert response.status_code == 200
-              assert response.json["status"] == "healthy"
-
-          def test_student_result():
-              client = app.test_client()
-              response = client.get("/results/101")
-              assert response.status_code == 200
-              data = response.json
-              assert data["name"] == "Aarav Shah"
-              assert data["total"] == 251
-              assert data["percentage"] == 83.67
-              assert data["status"] == "PASS"
-
-          def test_student_not_found():
-              client = app.test_client()
-              response = client.get("/results/999")
-              assert response.status_code == 404
-          EOF
+```yaml
 name: SonarQube
+
 on:
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+
 jobs:
   build:
     name: Build and analyze
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      # This step should build, test and generate coverage reports
-      # - name: Build and test
-      #   run: <build + test + generate coverage reports>
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest fastapi httpx
+
+      - name: Run tests
+        run: pytest -v
+
       - name: Cache SonarQube packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
+          restore-keys: |
+            ${{ runner.os }}-sonar
+
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.organization=srushti117
             -Dsonar.projectKey=srushti117_prac_exam
-      - name: Run tests
-        run: pytest -v
+```
